@@ -103,7 +103,6 @@ bosh_credentials:
   director_password: REPLACE_WITH_PASSWORD
   mbus_password: REPLACE_WITH_PASSWORD
   nats_password: REPLACE_WITH_PASSWORD
-  redis_password: REPLACE_WITH_PASSWORD
   postgres_password: REPLACE_WITH_PASSWORD
   registry_password: REPLACE_WITH_PASSWORD
 ```
