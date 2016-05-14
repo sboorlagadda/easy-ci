@@ -1,0 +1,143 @@
+#!/bin/bash
+
+set -e -x
+
+script_dir=$(dirname $0)
+
+if [ $# -ne 1 ]; then
+  echo "Expected 1 argument (path to deployment directory), received $#"
+  exit 1
+fi
+
+#remove trailing slash
+deployment_dir=${1%/}
+
+command -v aws >/dev/null || { echo "aws is required"; exit 1; }
+command -v bosh >/dev/null || { echo "bosh is required"; exit 1; }
+command -v jq >/dev/null || { echo "jq is required"; exit 1; }
+command -v spiff >/dev/null || { echo "spiff is required"; exit 1; }
+
+set +x
+  source ${deployment_dir}/aws_environment
+
+  if [ -z ${AWS_DEFAULT_REGION} ]; then
+    echo 'AWS_DEFAULT_REGION is not set'
+    exit 1
+  fi
+
+  if [ -z ${AWS_ACCESS_KEY_ID} ]; then
+    echo 'AWS_DEFAULT_REGION is not set'
+    exit 1
+  fi
+
+  if [ -z ${AWS_SECRET_ACCESS_KEY} ]; then
+    echo 'AWS_DEFAULT_REGION is not set'
+    exit 1
+  fi
+
+  source ${deployment_dir}/bosh_environment
+
+  if [ -z ${BOSH_USER} ]; then
+    echo 'BOSH_USER is not set'
+    exit 1
+  fi
+
+  if [ -z ${BOSH_PASSWORD} ]; then
+    echo 'BOSH_PASSWORD is not set'
+    exit 1
+  fi
+
+  if [ -z ${BOSH_DIRECTOR} ]; then
+    echo 'BOSH_DIRECTOR is not set'
+    exit 1
+  fi
+set -x
+
+mkdir -p ${deployment_dir}/artifacts/deployments
+mkdir -p generated-stubs
+
+for script_source in ${script_dir}/common/*; do source ${script_source}; done
+
+# Target bosh
+bosh -n target $BOSH_DIRECTOR
+set +x
+  bosh login $BOSH_USER $BOSH_PASSWORD
+set -x
+
+# Obtain bosh uuid for manifest generation
+BOSH_UUID=$(bosh --no-color status --uuid)
+cat > generated-stubs/director_uuid.yml <<EOF
+---
+director_uuid: $BOSH_UUID
+EOF
+
+# generate AWS resources stub for shared purposes
+aws cloudformation describe-stack-resources --stack-name concourse \
+  | jq '.StackResources|map({key: .LogicalResourceId, value: .PhysicalResourceId}) | from_entries as $body | {Resources: $body}' \
+  > generated-stubs/aws-resources.json
+
+# Generate the cloud propeties stub
+SUBNET_ID=$(cat generated-stubs/aws-resources.json | jq -r .Resources.ConcourseSubnet)
+
+CONCOURSE_SECURITY_GROUP_ID=$(cat generated-stubs/aws-resources.json | jq -r .Resources.ConcourseSecurityGroup)
+CONCOURSE_SECURITY_GROUP_NAME=$(aws ec2 describe-security-groups --group-ids ${CONCOURSE_SECURITY_GROUP_ID} | jq .SecurityGroups[0].GroupName)
+
+AWS_ZONE=$(aws ec2 describe-subnets --subnet-ids $SUBNET_ID | jq -r .Subnets[0].AvailabilityZone)
+
+LOAD_BALANCER=$(cat generated-stubs/aws-resources.json | jq -r .Resources.ConcourseLoadBalancer)
+
+cat > generated-stubs/cloud_properties.yml <<EOF
+---
+cloud_properties:
+  security_group_name: $CONCOURSE_SECURITY_GROUP_NAME
+  subnet_id: $SUBNET_ID
+  az: $AWS_ZONE
+  load_balancer: $LOAD_BALANCER
+EOF
+
+# Generate Concourse manifest
+optional_syslog=""
+if [ "$(ls -A ${deployment_dir}/stubs/syslog)" ]; then
+  optional_syslog=$(ls -d ${deployment_dir}/stubs/syslog/*)
+fi
+
+optional_datadog=""
+if [ "$(ls -A ${deployment_dir}/stubs/datadog)" ]; then
+  optional_datadog=$(ls -d ${deployment_dir}/stubs/datadog/*)
+fi
+
+# generate atc_credentials if they do not exist
+if [ ! -e ${deployment_dir}/stubs/concourse/atc_credentials.yml  ]; then
+  atc_credentials ${deployment_dir}/stubs/concourse/atc_credentials.yml
+fi
+
+echo "# GENERATED, NO TOUCHING" > ${deployment_dir}/artifacts/deployments/concourse.yml
+spiff merge $script_dir/../templates/bosh/bosh-deployment-mask.yml \
+  $script_dir/../templates/concourse/concourse.yml \
+  generated-stubs/director_uuid.yml \
+  generated-stubs/cloud_properties.yml \
+  ${deployment_dir}/stubs/concourse/*.yml \
+  ${optional_datadog} \
+  ${optional_syslog} \
+  >> ${deployment_dir}/artifacts/deployments/concourse.yml
+
+# Upload binaries to BOSH director
+STEMCELL_PATH=$(cat $deployment_dir/stubs/concourse/binary_urls.json | jq -r .stemcell)
+CONCOURSE_RELEASE_PATH=$(cat $deployment_dir/stubs/concourse/binary_urls.json | jq -r .concourse_release)
+GARDEN_RELEASE_PATH=$(cat $deployment_dir/stubs/concourse/binary_urls.json | jq -r .garden_release)
+bosh -n upload stemcell $STEMCELL_PATH --skip-if-exists
+bosh -n upload release $CONCOURSE_RELEASE_PATH --skip-if-exists
+bosh -n upload release $GARDEN_RELEASE_PATH --skip-if-exists
+
+# Deploy Concourse
+bosh \
+  -n \
+  -d "${deployment_dir}/artifacts/deployments/concourse.yml" \
+  deploy
+
+# display result
+LOAD_BALANCER_DNSName=$(aws elb describe-load-balancers --load-balancer-names $LOAD_BALANCER| jq -r .LoadBalancerDescriptions[0].DNSName)
+echo "Concourse available at https://$LOAD_BALANCER_DNSName"
+
+# clean up
+rm -rf generated-stubs
