@@ -33,28 +33,10 @@ blackbox_config: &blackbox_config
       transport: tls
 
 jobs:
-  - name: discovery
-    instances: 1
-    resource_pool: discovery
-    persistent_disk: 1024
-    templates:
-      - {release: concourse, name: consul-agent}
-      - {release: concourse, name: blackbox}
-    networks:
-      - name: concourse
-        static_ips: (( .networks.concourse.subnets.[0].static ))
-    properties:
-      blackbox: *blackbox_config
-      consul:
-        agent:
-          mode: server
-
   - name: atc
-    instances: 2
+    instances: 1
     resource_pool: orchestration
     templates:
-      - {release: concourse, name: consul-agent}
-      - {release: concourse, name: blackbox}
       - {release: concourse, name: atc}
       - {release: concourse, name: tsa}
     networks:
@@ -63,66 +45,44 @@ jobs:
       serial: true
       max_in_flight: 1
     properties:
-      blackbox: *blackbox_config
-      atc:
-        external_url: (( atc_credentials.external_url || nil ))
-        github_auth: (( atc_credentials.github_auth || nil ))
-        basic_auth_username: (( atc_credentials.basic_auth_username ))
-        basic_auth_password: (( atc_credentials.basic_auth_password ))
-        publicly_viewable: true
-        postgresql:
-          database: (( atc_credentials.db_name ))
-          role:
-            name: (( atc_credentials.db_user ))
-            password: ((atc_credentials.db_password ))
+      external_url: (( atc_credentials.external_url || nil ))
+      github_auth: (( atc_credentials.github_auth || nil ))
+      basic_auth_username: (( atc_credentials.basic_auth_username ))
+      basic_auth_password: (( atc_credentials.basic_auth_password ))
+      publicly_viewable: true
+      postgresql_database: (( atc_credentials.db_name ))
       tsa:
         atc:
           username: (( atc_credentials.basic_auth_username ))
           password: (( atc_credentials.basic_auth_password ))
-      consul:
-        agent:
-          servers: {lan: (( jobs.discovery.networks.concourse.static_ips ))}
 
-  - name: postgresql
+  - name: db
     instances: 1
     resource_pool: databases
     persistent_disk: 102400
     templates:
-      - {release: concourse, name: consul-agent}
-      - {release: concourse, name: blackbox}
       - {release: concourse, name: postgresql}
     networks: [{name: concourse}]
     properties:
-      blackbox: *blackbox_config
-      postgresql:
-        databases:
-        - name: (( atc_credentials.db_name ))
-        roles:
-        - name: (( atc_credentials.db_user ))
-          password: ((atc_credentials.db_password ))
-      consul:
-        agent:
-          servers: {lan: (( jobs.discovery.networks.concourse.static_ips ))}
+      databases:
+      - name: (( atc_credentials.db_name ))
+      roles:
+      - name: (( atc_credentials.db_user ))
+        password: ((atc_credentials.db_password ))
 
   - name: worker
-    instances: 2
+    instances: 1
     resource_pool: workers
     templates:
-      - {release: concourse, name: consul-agent}
-      - {release: concourse, name: blackbox}
       - {release: concourse, name: baggageclaim}
       - {release: concourse, name: groundcrew}
       - {release: garden-linux, name: garden}
     networks: [{name: concourse}]
     properties:
-      blackbox: *blackbox_config
       garden:
         listen_network: tcp
         listen_address: 0.0.0.0:7777
         btrfs_store_size_mb: 100000
-      consul:
-        agent:
-          servers: {lan: (( jobs.discovery.networks.concourse.static_ips ))}
 
 resource_pools:
   - name: orchestration
@@ -140,28 +100,21 @@ resource_pools:
     network: concourse
     stemcell: *stemcell
     cloud_properties:
-      instance_type: c3.xlarge
+      instance_type: c3.large
       availability_zone: (( .cloud_properties.az ))
 
   - name: workers
     network: concourse
     stemcell: *stemcell
     cloud_properties:
-      instance_type: c3.xlarge
+      instance_type: c3.large
       availability_zone: (( .cloud_properties.az ))
       ephemeral_disk:
         size: 1024000
         type: gp2
 
-  - name: discovery
-    network: concourse
-    stemcell: *stemcell
-    cloud_properties:
-      instance_type: m3.medium
-      availability_zone: (( .cloud_properties.az ))
-
 compilation:
-  workers: 4
+  workers: 1
   network: concourse
   reuse_compilation_vms: true
   cloud_properties:
