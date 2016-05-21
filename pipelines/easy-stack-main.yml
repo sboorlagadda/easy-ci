@@ -1,0 +1,294 @@
+
+groups:
+- name: home
+  jobs:
+  - api-gateway-unit-tests
+  - auth-server-unit-tests
+  - config-server-unit-tests
+  - catalog-server-unit-tests
+  - eureka-unit-tests
+  - build-api-gateway
+  - build-auth-server
+  - build-config-server
+  - build-catalog-server
+  - build-eureka
+  - integration-tests
+
+- name: unit-tests
+  jobs:
+  - api-gateway-unit-tests
+  - auth-server-unit-tests
+  - config-server-unit-tests
+  - catalog-server-unit-tests
+  - eureka-unit-tests
+
+- name: build-packages
+  jobs:
+  - build-api-gateway
+  - build-auth-server
+  - build-config-server
+  - build-catalog-server
+  - build-eureka
+
+- name: integration-tests
+  jobs:
+  - integration-tests
+
+resources:
+- name: easy-api-gateway
+  type: git
+  source:
+    uri: https://github.com/sboorlagadda/easy-api-gateway.git
+    branch: master
+- name: easy-auth-server
+  type: git
+  source:
+    uri: https://github.com/sboorlagadda/easy-auth-server.git
+    branch: master
+- name: easy-config-server
+  type: git
+  source:
+    uri: https://github.com/sboorlagadda/easy-config-server.git
+    branch: master
+- name: easy-catalog
+  type: git
+  source:
+    uri: https://github.com/sboorlagadda/easy-catalog.git
+    branch: master
+- name: easy-eureka
+  type: git
+  source:
+    uri: https://github.com/sboorlagadda/easy-eureka.git
+    branch: master
+- name: easy-integration-tests
+  type: git
+  source:
+    uri: https://github.com/sboorlagadda/easy-integration-tests.git
+    branch: master
+- name: apigateway-jar
+  type: s3
+  source:
+    access_key_id: &aws-access-key {{aws-access-key}}
+    secret_access_key: &aws-secret-access-key {{aws-secret-key}}
+    region_name: &aws-region {{aws-region}}
+    regexp: apigateway-(.*).jar
+    bucket: easy-stack
+    private: true
+- name: authserver-jar
+  type: s3
+  source:
+    access_key_id: *aws-access-key
+    secret_access_key: *aws-secret-access-key
+    region_name: *aws-region
+    regexp: authserver-(.*).jar
+    bucket: easy-stack
+    private: true
+- name: configserver-jar
+  type: s3
+  source:
+    access_key_id: *aws-access-key
+    secret_access_key: *aws-secret-access-key
+    region_name: *aws-region
+    regexp: configserver-(.*).jar
+    bucket: easy-stack
+    private: true
+- name: catalog-jar
+  type: s3
+  source:
+    access_key_id: *aws-access-key
+    secret_access_key: *aws-secret-access-key
+    region_name: *aws-region
+    regexp: catalog-(.*).jar
+    bucket: easy-stack
+    private: true
+- name: eureka-jar
+  type: s3
+  source:
+    access_key_id: *aws-access-key
+    secret_access_key: *aws-secret-access-key
+    region_name: *aws-region
+    regexp: eureka-(.*).jar
+    bucket: easy-stack
+    private: true
+- name: apigateway-version
+  type: semver
+  source:
+    initial_version: 0.0.0
+    bucket: easy-stack-versions
+    key: apigateway-version
+    access_key_id: *aws-access-key
+    secret_access_key: *aws-secret-access-key
+    region_name: *aws-region
+- name: authserver-version
+  type: semver
+  source:
+    initial_version: 0.0.0
+    bucket: easy-stack-versions
+    key: authserver-version
+    access_key_id: *aws-access-key
+    secret_access_key: *aws-secret-access-key
+    region_name: *aws-region
+- name: catalog-version
+  type: semver
+  source:
+    initial_version: 0.0.0
+    bucket: easy-stack-versions
+    key: catalog-version
+    access_key_id: *aws-access-key
+    secret_access_key: *aws-secret-access-key
+    region_name: *aws-region
+- name: configserver-version
+  type: semver
+  source:
+    initial_version: 0.0.0
+    bucket: easy-stack-versions
+    key: configserver-version
+    access_key_id: *aws-access-key
+    secret_access_key: *aws-secret-access-key
+    region_name: *aws-region
+- name: eureka-version
+  type: semver
+  source:
+    initial_version: 0.0.0
+    bucket: easy-stack-versions
+    key: eureka-version
+    access_key_id: *aws-access-key
+    secret_access_key: *aws-secret-access-key
+    region_name: *aws-region
+
+jobs:
+- name: api-gateway-unit-tests
+  plan:
+  - get: easy-api-gateway
+    trigger: true
+  - task: unit-tests
+    file: easy-api-gateway/ci/unit.yml
+- name: auth-server-unit-tests
+  plan:
+  - get: easy-auth-server
+    trigger: true
+  - task: unit-tests
+    file: easy-auth-server/ci/unit.yml
+- name: config-server-unit-tests
+  plan:
+  - get: easy-config-server
+    trigger: true
+  - task: unit-tests
+    file: easy-config-server/ci/unit.yml
+- name: catalog-server-unit-tests
+  plan:
+  - get: easy-catalog
+    trigger: true
+  - task: unit-tests
+    file: easy-catalog/ci/unit.yml
+- name: eureka-unit-tests
+  plan:
+  - get: easy-eureka
+    trigger: true
+  - task: unit-tests
+    file: easy-eureka/ci/unit.yml
+- name: build-api-gateway
+  plan:
+  - get: easy-api-gateway
+    trigger: true
+    passed:
+      - api-gateway-unit-tests
+  - get: apigateway-version
+  - task: build
+    file: easy-api-gateway/ci/build.yml
+  - put: apigateway-jar
+    params: 
+      file: builds/apigateway-*.jar
+  - put: apigateway-version
+    params:
+      file: apigateway-version/version
+- name: build-auth-server
+  plan:
+  - get: easy-auth-server
+    trigger: true
+    passed:
+      - auth-server-unit-tests
+  - get: authserver-version
+    params: {bump: minor}
+  - task: build
+    file: easy-auth-server/ci/build.yml
+  - put: authserver-jar
+    params: 
+      file: builds/authserver-*.jar
+  - put: authserver-version
+    params:
+      file: authserver-version/version
+- name: build-config-server
+  plan:
+  - get: easy-config-server
+    trigger: true
+    passed:
+      - config-server-unit-tests
+  - get: configserver-version
+    params: {bump: minor}
+  - task: build
+    file: easy-config-server/ci/build.yml
+  - put: configserver-jar
+    params: 
+      file: builds/configserver-*.jar
+  - put: configserver-version
+    params:
+      file: configserver-version/version
+- name: build-catalog-server
+  plan:
+  - get: easy-catalog
+    trigger: true
+    passed:
+      - catalog-server-unit-tests
+  - get: catalog-version
+    params: {bump: minor}
+  - task: build
+    file: easy-catalog/ci/build.yml
+  - put: catalog-jar
+    params: 
+      file: builds/catalog-*.jar
+  - put: catalog-version
+    params:
+      file: catalog-version/version
+- name: build-eureka
+  plan:
+  - get: easy-eureka
+    trigger: true
+    passed:
+      - eureka-unit-tests
+  - get: eureka-version
+    params: {bump: minor}
+  - task: build
+    file: easy-eureka/ci/build.yml
+  - put: eureka-jar
+    params: 
+      file: builds/eureka-*.jar
+  - put: eureka-version
+    params:
+      file: eureka-version/version
+- name: integration-tests
+  plan:
+  - aggregate:
+    - get: apigateway-jar
+      trigger: true
+      passed:
+        - build-api-gateway
+    - get: authserver-jar
+      trigger: true
+      passed:
+        - build-auth-server
+    - get: configserver-jar
+      trigger: true
+      passed:
+        - build-config-server
+    - get: catalog-jar
+      trigger: true
+      passed:
+        - build-catalog-server
+    - get: eureka-jar
+      trigger: true
+      passed:
+        - build-eureka
+    - get: easy-integration-tests
+  - task: test
+    file: easy-integration-tests/ci/test.yml
