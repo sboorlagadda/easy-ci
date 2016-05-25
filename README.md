@@ -186,6 +186,7 @@ For this script, it must have at least the following minimal structure.
 my_deployment_dir/
 |- aws_environment
 |- bosh_environment
+|- certs
 |- stubs/
    |- concourse/
    |  |- (atc_credentials.yml, optional)
