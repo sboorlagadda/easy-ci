@@ -290,5 +290,5 @@ jobs:
       passed:
         - build-eureka
     - get: easy-integration-tests
-  - task: test
-    file: easy-integration-tests/ci/test.yml
+  - task: movies-test
+    file: easy-integration-tests/ci/movies.yml
