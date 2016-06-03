@@ -13,7 +13,6 @@ groups:
   - build-catalog-server
   - build-eureka
   - integration-tests
-  - base-docker-image-publish
   - apigateway-docker-image-publish
   - configserver-docker-image-publish
   - authserver-docker-image-publish
@@ -185,37 +184,37 @@ resources:
 - name: apigateway-docker-image
   type: docker-image
   source:
-    email: &docker-email {{docker-email}}
-    username: &docker-username {{docker-username}}
-    password: &docker-password {{docker-password}}
+    email: *docker-email
+    username: *docker-username
+    password: *docker-password
     repository: easystack/apigateway
 - name: configserver-docker-image
   type: docker-image
   source:
-    email: &docker-email {{docker-email}}
-    username: &docker-username {{docker-username}}
-    password: &docker-password {{docker-password}}
+    email: *docker-email
+    username: *docker-username
+    password: *docker-password
     repository: easystack/configserver
 - name: authserver-docker-image
   type: docker-image
   source:
-    email: &docker-email {{docker-email}}
-    username: &docker-username {{docker-username}}
-    password: &docker-password {{docker-password}}
+    email: *docker-email
+    username: *docker-username
+    password: *docker-password
     repository: easystack/authserver
 - name: eureka-docker-image
   type: docker-image
   source:
-    email: &docker-email {{docker-email}}
-    username: &docker-username {{docker-username}}
-    password: &docker-password {{docker-password}}
+    email: *docker-email
+    username: *docker-username
+    password: *docker-password
     repository: easystack/eureka
 - name: catalog-docker-image
   type: docker-image
   source:
-    email: &docker-email {{docker-email}}
-    username: &docker-username {{docker-username}}
-    password: &docker-password {{docker-password}}
+    email: *docker-email
+    username: *docker-username
+    password: *docker-password
     repository: easystack/catalog
 
 jobs:
@@ -372,9 +371,11 @@ jobs:
   - get: apigateway-version
   - get: easystack-base-image
     trigger: true
+  - task: docker-ready
+    file: easy-api-gateway/ci/docker.yml
   - put: apigateway-docker-image
     params:
-      build: easy-api-gateway/src/main/docker
+      build: image
 - name: configserver-docker-image-publish
   plan:
   - get: easy-config-server
@@ -385,9 +386,11 @@ jobs:
   - get: configserver-version
   - get: easystack-base-image
     trigger: true
+  - task: docker-ready
+    file: easy-config-server/ci/docker.yml
   - put: configserver-docker-image
     params:
-      build: easy-config-server/src/main/docker
+      build: image
 - name: authserver-docker-image-publish
   plan:
   - get: easy-auth-server
@@ -398,9 +401,11 @@ jobs:
   - get: authserver-version
   - get: easystack-base-image
     trigger: true
+  - task: docker-ready
+    file: easy-auth-server/ci/docker.yml
   - put: authserver-docker-image
     params:
-      build: easy-auth-server/src/main/docker
+      build: image
 - name: eureka-docker-image-publish
   plan:
   - get: easy-eureka
@@ -411,9 +416,11 @@ jobs:
   - get: eureka-version
   - get: easystack-base-image
     trigger: true
+  - task: docker-ready
+    file: easy-eureka/ci/docker.yml
   - put: eureka-docker-image
     params:
-      build: easy-eureka/src/main/docker
+      build: image
 - name: catalog-docker-image-publish
   plan:
   - get: easy-catalog
@@ -424,6 +431,8 @@ jobs:
   - get: catalog-version
   - get: easystack-base-image
     trigger: true
+  - task: docker-ready
+    file: easy-catalog/ci/docker.yml
   - put: catalog-docker-image
     params:
-      build: easy-catalog/src/main/docker
+      build: image
