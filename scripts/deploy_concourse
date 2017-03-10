@@ -106,17 +106,6 @@ if [ "$(ls -A ${deployment_dir}/stubs/datadog)" ]; then
   optional_datadog=$(ls -d ${deployment_dir}/stubs/datadog/*)
 fi
 
-# Generate Concourse cloud-config
-echo "# GENERATED, NO TOUCHING" > ${deployment_dir}/artifacts/deployments/concourse-cloud-config.yml
-spiff merge $script_dir/../templates/bosh/bosh-cloud-config-mask.yml \
-  $script_dir/../templates/concourse/concourse-cloud-config.yml \
-  generated-stubs/cloud_properties.yml \
-  >> ${deployment_dir}/artifacts/deployments/concourse-cloud-config.yml
-
-# Update bosh with generated cloud-config
-bosh update cloud-config ${deployment_dir}/artifacts/deployments/concourse-cloud-config.yml
-bosh cloud-config
-
 # generate atc_credentials if they do not exist
 if [ ! -e ${deployment_dir}/stubs/concourse/atc_credentials.yml  ]; then
   atc_credentials ${deployment_dir}/stubs/concourse/atc_credentials.yml
