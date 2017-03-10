@@ -31,7 +31,11 @@ instance_groups:
       basic_auth_username: (( atc_credentials.basic_auth_username ))
       basic_auth_password: (( atc_credentials.basic_auth_password ))
       publicly_viewable: true
-      postgresql_database: (( atc_credentials.db_name ))
+      postgresql:
+        database: (( atc_credentials.db_name ))
+        role:
+          name: (( atc_credentials.db_user ))
+          password: ((atc_credentials.db_password ))
   - name: tsa
     release: concourse
     properties:
@@ -50,10 +54,12 @@ instance_groups:
   - name: postgresql
     release: concourse
     properties:
-      databases:
-      - name: (( atc_credentials.db_name ))
-        role: (( atc_credentials.db_role ))
-        password: ((atc_credentials.db_password ))
+      postgresql:
+        databases:
+        - name: (( atc_credentials.db_name ))
+        roles:
+        - name: (( atc_credentials.db_user ))
+          password: ((atc_credentials.db_password ))
 
 - name: worker
   instances: 1
