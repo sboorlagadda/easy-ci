@@ -3,18 +3,18 @@ name: bosh
 
 releases:
 - name: bosh
-  url: https://bosh.io/d/github.com/cloudfoundry/bosh?v=256.2
-  sha1: ff2f4e16e02f66b31c595196052a809100cfd5a8
+  url: https://bosh.io/d/github.com/cloudfoundry/bosh?v=260
+  sha1: f8f086974d9769263078fb6cb7927655744dacbc
 - name: bosh-aws-cpi
-  url: https://bosh.io/d/github.com/cloudfoundry-incubator/bosh-aws-cpi-release?v=52
-  sha1: dc4a0cca3b33dce291e4fbeb9e9948b6a7be3324
+  url: https://bosh.io/d/github.com/cloudfoundry-incubator/bosh-aws-cpi-release?v=61
+  sha1: 32da5ff428082bbe6b4ef50b6ba386d44b204baf
 
 resource_pools:
 - name: vms
   network: private
   stemcell:
-    url: https://bosh.io/d/stemcells/bosh-aws-xen-hvm-ubuntu-trusty-go_agent?v=3232.2
-    sha1: c24ca1e494990aefa2eb236795447b76a9056648
+    url: https://bosh.io/d/stemcells/bosh-aws-xen-hvm-ubuntu-trusty-go_agent?v=3312
+    sha1: ea1d210b58a12d957d0b9b6a6cc538262ee4a924
   cloud_properties:
     instance_type: m3.xlarge
     ephemeral_disk: {size: 25_000, type: gp2}
@@ -100,7 +100,14 @@ jobs:
       name: my-bosh
       db: *db
       cpi_job: aws_cpi
-      max_threads: 10
+      enable_dedicated_status_worker: true
+      workers: 11
+      flush_arp: true
+      user_management:
+        local:
+          users:
+          - name: admin
+            password: ((bosh_credentials.director_password))
       ssl:
         key: (( bosh_certs.key ))
         cert: (( bosh_certs.crt ))
