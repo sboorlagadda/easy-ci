@@ -10,7 +10,7 @@ vm_types:
   cloud_properties:
     instance_type: m3.large
     ephemeral_disk:
-      size: 200_00
+      size: 200000
       type: standard
 - name: compilation
   cloud_properties:
