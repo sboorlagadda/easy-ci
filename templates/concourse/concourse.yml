@@ -6,7 +6,7 @@ director_uuid: (( merge ))
 releases:
   - name: concourse
     version: latest
-  - name: garden-linux
+  - name: garden-runc
     version: latest
 
 stemcells:
@@ -20,7 +20,7 @@ instance_groups:
   vm_type: web
   stemcell: trusty
   azs: [z1]
-  networks: 
+  networks:
   - name: concourse
   jobs:
   - name: atc
@@ -69,13 +69,13 @@ instance_groups:
     release: concourse
     properties: {}
   - name: garden
-    release: garden-linux
+    release: garden-runc
     properties:
       garden:
         listen_network: tcp
         listen_address: 0.0.0.0:7777
         btrfs_store_size_mb: 100000
-    
+
 update:
   canaries: 1
   max_in_flight: 3

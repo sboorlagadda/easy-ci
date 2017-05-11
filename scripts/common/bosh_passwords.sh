@@ -8,6 +8,7 @@ bosh_credentials:
   agent_password: $(generate_password)
   director_password: $(generate_password)
   mbus_password: $(generate_password)
+  redis_password: $(generate_password)
   nats_password: $(generate_password)
   postgres_password: $(generate_password)
   registry_password: $(generate_password)
