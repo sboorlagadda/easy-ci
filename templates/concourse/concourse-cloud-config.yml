@@ -2,13 +2,13 @@
 vm_types:
 - name: web
   cloud_properties:
-    instance_type: m3.medium
+    instance_type: t2.medium
 - name: database
   cloud_properties:
-    instance_type: m3.medium
+    instance_type: t2.medium
 - name: worker
   cloud_properties:
-    instance_type: m3.large
+    instance_type: t2.xlarge
     ephemeral_disk:
       size: 200000
       type: standard
